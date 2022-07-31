@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdexcept>
 
 #include <memory>
 #include <string>
@@ -31,7 +33,69 @@ const char USAGE[] = "Usage: %s [options] <Brainfuck file>\n"
                      "Options:\n"
                      "--mode=cag : Run using a compiler\n"
                      "--mode=i   : Run using an interpreter\n"
-                     "--mode=jit : Run using a Just-In-Time compiler\n";
+                     "--mode=jit : Run using a Just-In-Time compiler\n"
+                     "--fps=N    : Limit to N frames per second\n"
+                     "--fps-log  : Log frame timing info to stderr\n";
+
+long frame_limit = 0;
+bool frame_log = 0;
+
+// Passed to BrainfuckRunner->run(...) to provide output functionality for
+// the "." command when --fps limiter specified.
+static bool bf_write_fps(void*, char c) {
+  static int frame_count = 0;
+  static int p = 0;
+  static clock_t time = clock();
+  static double delta;
+  static double lag = 0.0;
+
+  // State machine to look for ANSI Escape Codes on the output stream
+  switch (c) {
+    // Start ANSI Escape Code
+    case 0x1b:
+      p = 1;
+      break;
+    
+    // cont...
+    case '[':
+      if (p == 1) {
+        p = 2;
+      }
+      break;
+    
+    // Found (esc)(lsb)H or (esc)(lsb)f
+    case 'H': case 'f':
+      if (p != 2) {
+          p = 0;
+          break;
+      } 
+      p = 3;
+      break;
+
+    default:
+      p = 0;
+      break;
+  }
+
+  // Found cursor home. Sleep until frame timer elapses and log to stderr if
+  // --fps-log option specified.
+  if (p == 3) {
+    frame_count++;
+    delta = difftime(clock(), time);
+    if (delta < frame_limit) {
+      usleep(frame_limit - delta);
+    } else {
+      lag += delta-frame_limit;
+    }
+    time = clock();
+    p = 0;
+    if (frame_log) {
+      fprintf(stderr,"Frame %d Delta %ld Limit %ld Lag %d\n", frame_count, (long)delta, frame_limit, (int)lag);
+    }
+  }
+
+  return putchar(c) != EOF;
+}
 
 // Passed to BrainfuckRunner->run(...) to provide output functionality for
 // the "." command.
@@ -95,7 +159,9 @@ int run_brainfuck_program(BrainfuckRunner* runner,
     return 1;
   }
 
-  runner->run(bf_read, NULL, bf_write, NULL, memory);
+  runner->run(bf_read, NULL,
+    frame_limit == 0 ? bf_write : bf_write_fps,
+    NULL, memory);
   return 0;
 }
 
@@ -132,6 +198,15 @@ int main(int argc, char *argv[]) {
           fprintf(stderr, "Unexpected mode: %s\n", arg.c_str());
           return 1;
         }
+      } else if (arg.find("--fps=") == 0) {
+        try {
+          long fps = std::stoi(arg.substr(6));
+          frame_limit =  (1.0 / fps) * 1000000;
+        } catch (const std::invalid_argument &ex) {
+          fprintf(stderr, "Unexpected fps: %s\n", arg.c_str());
+        }
+      } else if (arg.find("--fps-log") == 0) {
+        frame_log = 1;
       } else {
         fprintf(stderr, "Unexpected argument: %s\n", arg.c_str());
         return 1;
