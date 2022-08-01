@@ -324,5 +324,3 @@ BrainfuckCompileAndGo::~BrainfuckCompileAndGo() {
     }
   }
 }
-
-
