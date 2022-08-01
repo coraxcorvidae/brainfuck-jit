@@ -20,9 +20,8 @@ class BrainfuckInterpreter : public BrainfuckRunner {
   BrainfuckInterpreter();
   virtual bool init(string::const_iterator start,
                     string::const_iterator end);
-  virtual void* run(BrainfuckReader reader,
+  virtual void* run(BrainfuckIO* io_layer,
                     void* reader_arg,
-                    BrainfuckWriter writer,
                     void* writer_arg,
                     void* memory);
 

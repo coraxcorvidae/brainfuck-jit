@@ -22,9 +22,8 @@
 
 #include "bf_compile_and_go.h"
 
-typedef void*(*BrainfuckFunction)(BrainfuckWriter writer,
+typedef void*(*BrainfuckFunction)(BrainfuckIO* io_layer,
                                   void* write_arg,
-                                  BrainfuckReader reader,
                                   void* read_arg,
                                   void* memory);
 
@@ -310,13 +309,12 @@ bool BrainfuckCompileAndGo::init(string::const_iterator start,
   return true;
 }
 
-void* BrainfuckCompileAndGo::run(BrainfuckReader reader,
+void* BrainfuckCompileAndGo::run(BrainfuckIO* io_layer,
                                  void* reader_arg,
-                                 BrainfuckWriter writer,
                                  void* writer_arg,
                                  void* memory) {
   return ((BrainfuckFunction)executable_)(
-      writer, writer_arg, reader, reader_arg, memory);
+      io_layer, writer_arg, reader_arg, memory);
 }
 
 BrainfuckCompileAndGo::~BrainfuckCompileAndGo() {
@@ -326,5 +324,3 @@ BrainfuckCompileAndGo::~BrainfuckCompileAndGo() {
     }
   }
 }
-
-

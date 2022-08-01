@@ -16,6 +16,8 @@
 #include <vector>
 
 #include "bf_runner.h"
+#include "bf_io_default.h"
+#include "bf_io_game.h"
 #include "bf_compile_and_go.h"
 #include "bf_interpreter.h"
 #include "bf_jit.h"
@@ -37,84 +39,7 @@ const char USAGE[] = "Usage: %s [options] <Brainfuck file>\n"
                      "--fps=N    : Limit to N frames per second\n"
                      "--fps-log  : Log frame timing info to stderr\n";
 
-long frame_limit = 0;
-bool frame_log = 0;
-
-// Passed to BrainfuckRunner->run(...) to provide output functionality for
-// the "." command when --fps limiter specified.
-static bool bf_write_fps(void*, char c) {
-  static int frame_count = 0;
-  static int p = 0;
-  static clock_t time = clock();
-  static double delta;
-  static double lag = 0.0;
-
-  // State machine to look for ANSI Escape Codes on the output stream
-  switch (c) {
-    // Start ANSI Escape Code
-    case 0x1b:
-      p = 1;
-      break;
-    
-    // cont...
-    case '[':
-      if (p == 1) {
-        p = 2;
-      }
-      break;
-    
-    // Found (esc)(lsb)H or (esc)(lsb)f
-    case 'H': case 'f':
-      if (p != 2) {
-          p = 0;
-          break;
-      } 
-      p = 3;
-      break;
-
-    default:
-      p = 0;
-      break;
-  }
-
-  // Found cursor home. Sleep until frame timer elapses and log to stderr if
-  // --fps-log option specified.
-  if (p == 3) {
-    frame_count++;
-    delta = difftime(clock(), time);
-    if (delta < frame_limit) {
-      usleep(frame_limit - delta);
-    } else {
-      lag += delta-frame_limit;
-    }
-    time = clock();
-    p = 0;
-    if (frame_log) {
-      fprintf(stderr,"Frame %d Delta %ld Limit %ld Lag %d\n", frame_count, (long)delta, frame_limit, (int)lag);
-    }
-  }
-
-  return putchar(c) != EOF;
-}
-
-// Passed to BrainfuckRunner->run(...) to provide output functionality for
-// the "." command.
-static bool bf_write(void*, char c) {
-  return putchar(c) != EOF;
-}
-
-// Passed to BrainfuckRunner->run(...) to provide input functionality for
-// the "," command.
-static char bf_read(void*) {
-  int c = getchar();
-  if (c == EOF) {
-    return 0;
-  } else {
-    return c;
-  }
-}
-
-int run_brainfuck_program(BrainfuckRunner* runner,
+int run_brainfuck_program(BrainfuckRunner* runner, BrainfuckIO* io_layer,
                           const string& source_file_path) {
   FILE *bf_source_file = fopen(source_file_path.c_str(), "rb");
   if (bf_source_file == NULL) {
@@ -159,15 +84,17 @@ int run_brainfuck_program(BrainfuckRunner* runner,
     return 1;
   }
 
-  runner->run(bf_read, NULL,
-    frame_limit == 0 ? bf_write : bf_write_fps,
-    NULL, memory);
+  runner->run(io_layer, NULL, NULL, memory);
   return 0;
 }
 
 int main(int argc, char *argv[]) {
   unique_ptr<BrainfuckRunner> bf(new BrainfuckInterpreter());
+  unique_ptr<BrainfuckIO> io(new BrainfuckIODefault());
+
   string bf_file;
+  int fps_limit = 0;
+  bool fps_log = 0;
 
   for (int i = 1; i < argc; ++i) {
     if (argv[i] == string("-h") ||
@@ -200,13 +127,12 @@ int main(int argc, char *argv[]) {
         }
       } else if (arg.find("--fps=") == 0) {
         try {
-          long fps = std::stoi(arg.substr(6));
-          frame_limit =  (1.0 / fps) * 1000000;
+          fps_limit = std::stoi(arg.substr(6));
         } catch (const std::invalid_argument &ex) {
           fprintf(stderr, "Unexpected fps: %s\n", arg.c_str());
         }
       } else if (arg.find("--fps-log") == 0) {
-        frame_log = 1;
+        fps_log = 1;
       } else {
         fprintf(stderr, "Unexpected argument: %s\n", arg.c_str());
         return 1;
@@ -222,5 +148,12 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  return run_brainfuck_program(bf.get(), files[0]);
+  if (fps_limit || fps_log) {
+    unique_ptr<BrainfuckIOGame> io_game(
+      new BrainfuckIOGame());
+    io_game->init(fps_limit, fps_log);
+    io = std::move(io_game);
+  }
+
+  return run_brainfuck_program(bf.get(), io.get(), files[0]);
 }
