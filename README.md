@@ -36,9 +36,9 @@ The compiler implementation requires a bit of assembly knowledge to understandab
 - https://github.com/brianquinlan/brainfuck-jit/blob/master/bf_compile_and_go.h
 - https://github.com/brianquinlan/brainfuck-jit/blob/master/bf_compile_and_go.cpp
 
-## Frames Per Second
+## Frame Limiter
 
-Using the `--fps=N` option limits rendering of a supported Brainfuck progran to `N` frames per second.
+The `--fps=N` option limits rendering of a supported Brainfuck program to `N` frames per second.
 
 To use this feature a Brainfuck program must output one of the following [ANSI Escape Codes](https://en.wikipedia.org/wiki/ANSI_escape_code) at the start of each frame:
 - `0x1b[H` Move cursor to the home position
