@@ -40,9 +40,8 @@ bool BrainfuckInterpreter::init(string::const_iterator start,
   return true;
 }
 
-void* BrainfuckInterpreter::run(BrainfuckReader reader,
+void* BrainfuckInterpreter::run(BrainfuckIO* io_layer,
                                 void* reader_arg,
-                                BrainfuckWriter writer,
                                 void* writer_arg,
                                 void* memory) {
   uint8_t* byte_memory = reinterpret_cast<uint8_t *>(memory);
@@ -70,11 +69,11 @@ void* BrainfuckInterpreter::run(BrainfuckReader reader,
          ++it;
         break;
       case ',':
-        *byte_memory = reader(reader_arg);
+        *byte_memory = io_layer->bf_read(reader_arg);
          ++it;
         break;
       case '.':
-        writer(writer_arg, *byte_memory);
+        io_layer->bf_write(writer_arg, *byte_memory);
          ++it;
         break;
       case '[':

@@ -44,11 +44,10 @@ bool BrainfuckJIT::init(string::const_iterator start,
   return true;
 }
 
-void* BrainfuckJIT::run(BrainfuckReader reader,
-                        void* reader_arg,
-                        BrainfuckWriter writer,
-                        void* writer_arg,
-                        void* memory) {
+void* BrainfuckJIT::run(BrainfuckIO* io_layer,
+                    void* reader_arg,
+                    void* writer_arg,
+                    void* memory) {
   uint8_t* byte_memory = reinterpret_cast<uint8_t *>(memory);
   // When processing a "[", push the position of that command onto a stack so
   // that we can quickly return to the start of the block when then "]" is
@@ -74,11 +73,11 @@ void* BrainfuckJIT::run(BrainfuckReader reader,
          ++it;
         break;
       case ',':
-        *byte_memory = reader(reader_arg);
+        *byte_memory = io_layer->bf_read(reader_arg);
          ++it;
         break;
       case '.':
-        writer(writer_arg, *byte_memory);
+        io_layer->bf_write(writer_arg, *byte_memory);
          ++it;
         break;
       case '[':
@@ -102,9 +101,8 @@ void* BrainfuckJIT::run(BrainfuckReader reader,
 
           if (loop.compiled) {
             byte_memory = reinterpret_cast<uint8_t *>(
-                loop.compiled->run(reader,
+                loop.compiled->run(io_layer,
                                    reader_arg,
-                                   writer,
                                    writer_arg,
                                    byte_memory));
             it = loop_start_to_loop_[it].after_end;

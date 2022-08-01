@@ -8,6 +8,7 @@
 #define BF_RUNNER_H_
 
 #include <string>
+#include "bf_io.h"
 
 using std::string;
 
@@ -28,9 +29,8 @@ class BrainfuckRunner {
   // The return value is the location of the data pointer
   // (see http://en.wikipedia.org/wiki/Brainfuck#Commands) when the code is
   // finished being executed.
-  virtual void* run(BrainfuckReader reader,
+  virtual void* run(BrainfuckIO* io_layer,
                     void* reader_arg,
-                    BrainfuckWriter writer,
                     void* writer_arg,
                     void* memory) = 0;
 };

@@ -24,9 +24,8 @@ class BrainfuckJIT : public BrainfuckRunner {
   BrainfuckJIT();
   virtual bool init(string::const_iterator start,
                     string::const_iterator end);
-  virtual void* run(BrainfuckReader reader,
+  virtual void* run(BrainfuckIO* reader_writer,
                     void* reader_arg,
-                    BrainfuckWriter writer,
                     void* writer_arg,
                     void* memory);
 
