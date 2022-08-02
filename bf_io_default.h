@@ -1,4 +1,4 @@
-// Copyright 2014 Jon Ripley
+// Copyright 2022 Jon Ripley
 // See "LICENSE" file for details.
 //
 // Default Brainfuck input/output layer implementation.

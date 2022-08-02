@@ -1,4 +1,4 @@
-// Copyright 2014 Jon Ripley
+// Copyright 2022 Jon Ripley
 // See "LICENSE" file for details.
 //
 // An abstract interface for classes that provide input and output capabilities.
